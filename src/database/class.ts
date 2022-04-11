@@ -4,8 +4,7 @@ interface AClass {
     name: string;
     teachers:Array<string>;
     students:Array<string>;
-    AttendenceArray:Array<Date>;
-    AttendenceCount:Array<number>;
+    attendanceArray:Array<Date>;
 }
 
 const schema = new Schema<AClass>({
@@ -13,8 +12,7 @@ const schema = new Schema<AClass>({
     name: { type: String, required: true },
     teachers:[{type:String,required:true}],
     students:[{type:String,required:true}],
-    AttendenceArray:[{type:Date,required:true}],
-    AttendenceCount:[{type:Number,required:true}]
+    attendanceArray:[{type:Date,required:true}]
 });
 const ClassModel = model<AClass>('Class', schema);
 

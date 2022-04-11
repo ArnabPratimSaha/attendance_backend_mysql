@@ -33,7 +33,7 @@ router.post('/signup',async(req:CustomRequest,res:CustomResponse,next:NextFuncti
         const refreshtoken=jwt.sign({ id: user.id }, process.env.SECRET,{expiresIn:'1y'});
         user.refreshtoken.push(refreshtoken);
         await user.save();
-        return res.status(200).json({ accesstoken, refreshtoken, id: user.id });
+        return res.status(200).json({ accesstoken, refreshtoken, id: user.id,name,email });
     } catch (error) {
         return next(error);
     }
@@ -53,18 +53,16 @@ router.post('/login',async(req:CustomRequest,res:CustomResponse,next:NextFunctio
         const refreshtoken=jwt.sign({ id: user.id }, process.env.SECRET,{expiresIn:'1y'});
         user.refreshtoken.push(refreshtoken);
         await user.save();
-        return res.status(200).json({ accesstoken, refreshtoken, id: user.id });
+        return res.status(200).json({ accesstoken, refreshtoken, id: user.id,name:user.name,email});
     } catch (error) {
         return next(error);
     }
 });
 router.delete('/logout',userHandler,async(req:UserRequset,res:CustomResponse,next:NextFunction)=>{
     try {
-        if(!req.user)return next(new CustomError('User not found',500));
-        const user=await UserModel.findOne({id:req.user.id});
-        if(!user)return next(new CustomError('User not found',400));
-        user.refreshtoken=user.refreshtoken.filter((t:String)=>t!==req.refreshtoken);
-        await user.save();
+        if(!req.user)return next(new CustomError('No User',404));
+        const user=await UserModel.findOneAndUpdate({id:req.user.id},{$pull:{refreshtoken:req.refreshtoken}});
+        if(!user)return next(new CustomError('No User',404));
         return res.sendStatus(200);
     } catch (error) {
         next(error);
