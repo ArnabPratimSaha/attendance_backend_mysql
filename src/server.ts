@@ -23,8 +23,10 @@ app.listen(PORT,()=>console.log(`Server started on port ${PORT}`));
 import authentication  from './route/authentication';
 import user from './route/user';
 import classRoute from './route/class';
+import studentRoute from './route/student';
 app.use('/auth',authentication);
 app.use('/user',user);
 app.use('/class',classRoute);
+app.use('/student',studentRoute);
 
 app.use(errorHandler);
