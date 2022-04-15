@@ -24,6 +24,9 @@ const authentication_1 = __importDefault(require("./route/authentication"));
 const user_1 = __importDefault(require("./route/user"));
 const class_1 = __importDefault(require("./route/class"));
 const student_1 = __importDefault(require("./route/student"));
+app.get('/', (req, res) => {
+    res.status(200).json("server working");
+});
 app.use('/auth', authentication_1.default);
 app.use('/user', user_1.default);
 app.use('/class', class_1.default);
