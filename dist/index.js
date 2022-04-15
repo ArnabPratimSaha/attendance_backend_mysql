@@ -8,13 +8,24 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const cors_1 = __importDefault(require("cors"));
 require("dotenv/config");
 const errorHandler_1 = require("./middleware/errorHandler");
+var whitelist = ['https://a10dence.vercel.app', 'http://localhost:3000'];
+var corsOptions = {
+    origin: (origin, callback) => {
+        if (origin && whitelist.indexOf(origin) !== -1) {
+            callback(null, true);
+        }
+        else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
+};
 mongoose_1.default.connect(process.env.DATABASE || '').then(res => {
     console.log(`Successfulluy connected to ${res.connection.db.databaseName} DATABASE`);
 }).catch(err => {
     console.log(`Could not connect to database`);
 });
 const app = (0, express_1.default)();
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use(express_1.default.raw());

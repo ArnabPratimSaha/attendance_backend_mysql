@@ -4,6 +4,16 @@ import cors from 'cors';
 
 import  'dotenv/config';
 import { errorHandler } from './middleware/errorHandler';
+var whitelist = ['https://a10dence.vercel.app', 'http://localhost:3000']
+var corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+        if (origin && whitelist.indexOf(origin) !== -1) {
+            callback(null, true)
+        } else {
+            callback(new Error('Not allowed by CORS'))
+        }
+    }
+}
 
 mongoose.connect(process.env.DATABASE||'').then(res=>{
     console.log(`Successfulluy connected to ${res.connection.db.databaseName} DATABASE`);
@@ -12,7 +22,7 @@ mongoose.connect(process.env.DATABASE||'').then(res=>{
 })
 
 const app:Application=express();
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(express.raw());
