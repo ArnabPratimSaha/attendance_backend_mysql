@@ -1,4 +1,4 @@
-import express,{Application} from 'express';
+import express,{Application, Request, Response} from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 
@@ -24,6 +24,11 @@ import authentication  from './route/authentication';
 import user from './route/user';
 import classRoute from './route/class';
 import studentRoute from './route/student';
+
+app.get('/',(req:Request,res:Response)=>{
+    res.status(200).json("server working");
+})
+
 app.use('/auth',authentication);
 app.use('/user',user);
 app.use('/class',classRoute);
