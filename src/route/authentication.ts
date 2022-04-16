@@ -46,9 +46,9 @@ router.post('/login',async(req:CustomRequest,res:CustomResponse,next:NextFunctio
         if (!process.env.SECRET)return next(new CustomError('server error',500));
         if(!email || !password)return next(new CustomError('missing fields [email,password]',400));
         const user=await UserModel.findOne({email:email});
-        if(!user)return next(new CustomError('user missing',404));
+        if(!user)return next(new CustomError('user not found',404));
         const isSame:boolean=await bcrypt.compare(password,user.password);
-        if(!isSame)return res.sendStatus(403);
+        if(!isSame)return next(new CustomError('Credentials invalid',403));
         const accesstoken = jwt.sign({ id: user.id }, process.env.SECRET,{ expiresIn:  60});//1 min 
         const refreshtoken=jwt.sign({ id: user.id }, process.env.SECRET,{expiresIn:'1y'});
         user.refreshtoken.push(refreshtoken);

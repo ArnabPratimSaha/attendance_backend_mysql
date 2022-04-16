@@ -25,6 +25,19 @@ router.get('/',async(req:CustomRequest,res:CustomResponse,next:NextFunction)=>{
         next(error);
     }
 })
+router.patch('/',userHandler,teacherHandler,async(req:CustomRequest,res:CustomResponse,next:NextFunction)=>{
+    try {
+        const id:string|undefined=req.body.id?.trim();
+        const name:string|undefined=req.body.name?.toString().trim();
+        const roll:string|undefined=req.body.roll?.toString().trim();
+        if(!id||!name||!roll)return next(new CustomError('id roll roll missing',400));
+        const student=await StudentModel.findOneAndUpdate({id:id},{$set:{name:name ,roll:roll} });
+        if(!student)return next(new CustomError('Student not found',404));
+        return res.sendStatus(200);
+    } catch (error) {
+        next(error);
+    }
+})
 router.delete('/',userHandler,teacherHandler,async(req:CustomRequest,res:CustomResponse,next:NextFunction)=>{
     try {
         const id:string|undefined=req.body.id?.trim();
