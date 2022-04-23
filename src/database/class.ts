@@ -1,8 +1,7 @@
-import { Schema, model, connect } from 'mongoose';
 interface ClassInterface {
     id:string;
     name: string;
     teacher:string;
-    createdAt:Date;
+    createdAt:string;
 }
 export {ClassInterface}

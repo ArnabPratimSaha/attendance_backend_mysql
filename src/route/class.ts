@@ -7,15 +7,16 @@ import { userHandler, UserRequset } from '../middleware/userHandler';
 import { CustomError } from '../middleware/errorHandler';
 import { ClassInterface } from '../database/class';
 import { teacherRequest, teacherHandler } from '../middleware/teacherHandler';
-import { Student, StudentModel } from '../database/student';
+import { Student } from '../database/student';
 import MySqlConnection from '../database/config';
 import { getCustomid } from '../customs/uuid';
 import { classCreatingError } from '../middleware/classCreatingError';
+import { AttendanceRecord } from '../database/attendancerecord';
 
 
 const router:Router=express.Router();
 
-router.post('/create',userHandler,async(req:UserRequset,res:CustomResponse,next:NextFunction)=>{
+router.post('/',userHandler,async(req:UserRequset,res:CustomResponse,next:NextFunction)=>{
     try {
         if(!req.user)return next(new CustomError('No User',404));
         const name:string|undefined=req.body.name;
@@ -23,194 +24,129 @@ router.post('/create',userHandler,async(req:UserRequset,res:CustomResponse,next:
         const database=await MySqlConnection.build();
         const myClass:ClassInterface={
             id:getCustomid(),
-            name,createdAt:new Date,
+            name,createdAt:new Date().toISOString().slice(0, 19).replace('T', ' '),
             teacher:req.user.id
         }
         res.locals.classId=myClass.id;
-        await database.connection.query(`insert into class(id,name,createdAt,teacher) values('${myClass.id}','${myClass.name}','${myClass.createdAt.toISOString().slice(0, 19).replace('T', ' ')}','${myClass.teacher}') ;`);
-        await database.connection.query(`create table ${myClass.id}(id varchar(255) primary key,timestamp date not null);`)
+        await database.connection.query(`insert into class(id,name,createdAt,teacher) values('${myClass.id}','${myClass.name}','${myClass.createdAt}','${myClass.teacher}') ;`);
+        await database.connection.query(`create table ${myClass.id}_record (id varchar(255) primary key,sid varchar(255) not null,cid varchar(255) not null ,rid varchar(255) not null,foreign key(rid) references attendancerecord(id) on delete cascade,foreign key(cid) references class(id) on delete cascade,foreign key(sid) references student(id) on delete cascade );`)
         return res.status(200).json({ ...myClass,accesstoken:req.accesstoken });
     } catch (error) {
         next(error);
     }
 },classCreatingError)
 
-// router.post('/student',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const name:string|undefined=req.body.name;
-//         const roll:string|undefined=req.body.roll;
-//         if( !name || !roll)return next(new CustomError('missing field name or roll',400));
-//         if(!req.classData)return next(new CustomError('Class not found',404));
-//         const student=new StudentModel({
-//             id:uuidv4(),
-//             name:name,
-//             roll:roll,
-//             classId:req.classData.id,
-//             attendanceArray:new Array<boolean>(req.classData.attendanceArray.length).fill(false),
-//         });
-//         const classData=await ClassModel.findOne({id:req.classData.id});
-//         if(!classData)return next('No Class found');
-//         await student.save();
-//         classData.students.push(student.id);
-//         await classData.save();
-//         return res.status(200).json({ ...student.toObject(),accesstoken:req.accesstoken })
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.patch('/student',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const name:string|undefined=req.body.name;
-//         const roll:string|undefined=req.body.roll;
-//         const id:string|undefined=req.body.id;
-//         if( !name || !roll ||  !id)return next(new CustomError('missing field name or roll or id',400));
-//         if(!req.classData)return next(new CustomError('Class not found',404));
-//         const student=await StudentModel.findOne({id:id});
-//         if(!student)return next(new CustomError('Student not found',404));
-//         student.name=name;
-//         student.roll=roll;
-//         await student.save();
-//         return res.status(200).json({ ...student.toObject(),accesstoken:req.accesstoken })
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.delete('/student',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const id:string|undefined=req.body.id;
-//         if(!id)return next(new CustomError('missing field id',400));
-//         if(!req.classData)return next(new CustomError('Class not found',404));
-//         const classData=await ClassModel.findOne({id:req.classData.id});
-//         if(!classData)return next('No Class found');
-//         const student=await StudentModel.findOneAndDelete({id:id});
-//         if(!student)return next(new CustomError('Student not found',404));
-//         classData.students=classData.students.filter(i=>i!==student.id);
-//         await classData.save();
-//         return res.status(200).json({ ...student.toObject(),accesstoken:req.accesstoken })
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.get('/col',async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const index:string|undefined=req.query.index?.toString();
-//         const cid:string|undefined=req.query.cid?.toString();
-//         if(!index||!cid)return next(new CustomError('missing cid or index',400));
-//         const classData=await ClassModel.findOne({id:cid});
-//         if(!classData)return next(new CustomError('Not class found',404));
-//         const students=await StudentModel.find({classId:cid});
-//         if(+index>=classData.attendanceArray.length)return next(new CustomError('index out of bound',400));
-//         interface StudentIndividualData{
-//             id:string,
-//             name:string,roll:string,
-//             remark:boolean
-//         }
-//         interface DateAttendance{
-//             id:string,
-//             date:Date,
-//             name:string,
-//             students:Array<StudentIndividualData>,
-//             teachers:Array<string>
-//         }
-//         const sendData:DateAttendance={
-//             id:classData.id,
-//             name:classData.name,
-//             date:classData.attendanceArray[+index],
-//             students:students.map(s=>{
-//                 const stu:StudentIndividualData={
-//                     id:s.id,name:s.name,roll:s.roll,remark:s.attendanceArray[+index]
-//                 }
-//                 return stu;
-//             }),
-//             teachers:classData.teachers
-//         }
-//         return res.status(200).json({...sendData})
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.post('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const time:Date|undefined=req.body.time?new Date(req.body.time):undefined;
-//         if(!time)return next(new CustomError('time is missing'));
-//         const classData=await ClassModel.findOne({id:req.classData?.id});
-//         if(!classData)return next(new CustomError('No Class found',404));
-//         classData.attendanceArray.push(time);
-//         const response=await StudentModel.updateMany({classId:classData.id},{ $push:{ attendanceArray: false }});
-//         if(!response.acknowledged)return next(new CustomError('Data is not ACK',500,false));
-//         await classData.save();
-//         return res.sendStatus(200);
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.patch('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const index:number|undefined=req.body.index;
-//         const studentId:string|undefined=req.body.sid;
-//         const remark:boolean|undefined=req.body.remark;
-//         if(index===undefined || !studentId  || remark===undefined)return next(new CustomError('index or sid or remark missing',400));
-//         const classData=await ClassModel.findOne({id:req.classData?.id});
-//         if(!classData)return next(new CustomError('No Class found',404));
-//         if(index>=classData.attendanceArray.length)return next(new CustomError('index out of bound',400));
-//         const student=await StudentModel.findOne({id:studentId,classId:classData.id});
-//         if(!student)return next(new CustomError('Student not found',404));
-//         student.attendanceArray[index]=remark;
-//         await student.save();
-//         await classData.save();
-//         return res.status(200).json({accesstoken:req.accesstoken});
-//     } catch (error) {
-//         next(error);
-//     }
-// });
-// router.delete('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
-//     try {
-//         const index:string|undefined=req.body.index;
-//         if(index===undefined)return next(new CustomError('missing index',400));
-//         const classData=await ClassModel.findOne({id:req.classData?.id});
-//         if(!classData)return next(new CustomError('No Class found',404));
-//         if(+index>=classData.attendanceArray.length)return next(new CustomError('index out of bound',400));
-//         classData.attendanceArray=classData.attendanceArray.filter((c,i)=>i!==+index);
-//         const students=await StudentModel.find({classId:classData.id})
-//         for(let i=0;i<students.length;i++){
-//             students[i].attendanceArray=students[i].attendanceArray.filter((a,i)=>i!==+index)
-//             await students[i].save();
-//         }        
-//         await classData.save();
-//         return res.sendStatus(200)
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.get('/',async(req:Request,res:Response,next:NextFunction)=>{
-//     try {
-//         const classId:string|undefined=req.query.cid?.toString();
-//         if(!classId)return next(new CustomError('Class id missing'));
-//         const classData=await ClassModel.findOne({id:classId},'-_id -students -__v');
-//         if(!classData)return next(new CustomError('No Such class found'));
-//         const students=await StudentModel.find({classId:classData.id},'-_id -classId -__v');
-//         return res.status(200).json({
-//             ...classData.toObject(),
-//             students:students,
-//         });
-//     } catch (error) {
-//         next(error);
-//     }
-// })
-// router.delete('/',async(req:Request,res:Response,next:NextFunction)=>{
-//     try {
-//         const classId:string|undefined=req.body.cid;
-//         if(!classId)return next(new CustomError('Class id missing'));
-//         const classData=await ClassModel.findOneAndDelete({id:classId});
-//         if(!classData)return next(new CustomError('No Such class found'));
-//         const response=await StudentModel.deleteMany({classId:classData.id});
-//         if (!response.acknowledged) {
-//             return next(new CustomError('mongodb error', 500, false))
-//         }
-//         return res.sendStatus(200);
-//     } catch (error) {
-//         next(error);
-//     }
-// })
+router.post('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
+    try {
+        const time:Date|undefined=req.body.time?new Date(req.body.time):undefined;
+        if(!time)return next(new CustomError('time is missing'));
+        if(!req.classData)return next(new CustomError('class not found',400));
+        const database=await MySqlConnection.build();
+        await database.connection.query(`insert into attendancerecord(id,classId,timestamp) value ('${uuidv4()}','${req.classData.id}','${time.toISOString().slice(0, 19).replace('T', ' ')}');`);
+        return res.sendStatus(200);
+    } catch (error) {
+        next(error);
+    }
+})
+router.patch('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
+    try {
+        const recordId:string|undefined=req.body.rid;
+        const studentId:string|undefined=req.body.sid;
+        if(req.body.remark===undefined)return next(new CustomError('remark missing',400));
+        const remark:boolean=Boolean(req.body.remark);  
+        if(!recordId||!studentId)return next(new CustomError('rid or sid not found',400));
+        if(!req.classData)return next(new CustomError('class not found',400));
+        const database=await MySqlConnection.build();
+        
+        const [row]=await database.connection.query(`select * from student as s where s.id='${studentId}';`);
+        const students:Array<Student>=row as Array<Student>;
+        if(!students.length)return next(new CustomError('student not found'));
+        const [r]=await database.connection.query(`select * from attendancerecord as r where r.id='${recordId}';`);
+        const attendancerecord:Array<AttendanceRecord>=row as Array<AttendanceRecord>;
+        if(!attendancerecord)return next(new CustomError('attendance column not found',404));
+        if(remark){
+            await database.connection.query(`delete from ${req.classData.id}_record as r where r.sid='${studentId}' and r.rid='${recordId}' ;`);
+            await database.connection.query(`insert into ${req.classData.id}_record(id,sid,cid,rid) values ('${uuidv4()}','${studentId}','${req.classData.id}','${recordId}');`);
+        }
+        else
+            await database.connection.query(`delete from ${req.classData.id}_record as r where r.sid='${studentId}' and r.rid='${recordId}' ;`);
+        return res.sendStatus(200);
+    } catch (error) {
+        next(error);
+    }
+});
+router.delete('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
+    try {
+        const recordId:string|undefined=req.body.rid;
+        if(!recordId)return next(new CustomError('rid not found',400));
+        if(!req.classData)return next(new CustomError('class not found',400));
+        const database=await MySqlConnection.build();
+        await database.connection.query(`delete from attendancerecord as r where r.id='${recordId}';`)
+        return res.sendStatus(200);
+    } catch (error) {
+        next(error);
+    }
+})
+interface StudentAttendanceInterface{
+    name:string,
+    studentId:string,
+    roll:string,
+    recordId:string,
+    attendanceId:string,
+    timestamp:string
+}
+router.get('/',async(req:Request,res:Response,next:NextFunction)=>{
+    try {
+        const classId:string|undefined=req.query.cid?.toString();
+        if(!classId)return next(new CustomError('Class id missing'));
+        const database=await MySqlConnection.build();
+        const [row]=await database.connection.query(`select * from class as c where c.id='${classId}';`);
+        const classes:Array<ClassInterface>=row as Array<ClassInterface>;
+        if(!classes.length)return next(new CustomError('Class not found',404));
+        const [stu]=await database.connection.query(`select * from student as s where s.classId='${classId}'`);
+        const students:Array<Student>=stu as Array<Student>;
+        const [rec]=await database.connection.query(`select * from attendancerecord as ar where ar.classId='${classId}' order by ar.timestamp asc`);
+        const attendanceRecords:Array<AttendanceRecord>=rec as Array<AttendanceRecord>;
+        const [stur]=await database.connection.query(`
+            select stu.id as studentId,stu.name,stu.roll,ar.id as recordId,sr.id as attendanceId,ar.timestamp from (
+                select * from  attendancerecord as ar where ar.classId='${classId}'
+            )as ar
+            left join ${classId}_record as sr on sr.rid=ar.id
+            right join (select * from student as stu 
+            where stu.classId='${classId}') as stu on stu.id=sr.sid;
+        `);
+        const studentData:Array<StudentAttendanceInterface>=stur  as Array<StudentAttendanceInterface>;
+        let studentMatrix:Array<Array<boolean>>=students.map(s=>new Array<boolean>(attendanceRecords.length).fill(false));
+        const attendanceIdArray:Array<string>=attendanceRecords.map(ar=>ar.id);
+        const studentIdArray:Array<string>=students.map(s=>s.id);
+        studentData.forEach((sd)=>{
+            const rid=attendanceIdArray.indexOf(sd.recordId);
+            const sid=studentIdArray.indexOf(sd.studentId);
+            studentMatrix[sid][rid]=true;
+        })
+        return res.status(200).json({attendanceRecords,students,studentMatrix});
+    } catch (error) {
+        next(error);
+    }
+})
+router.delete('/',userHandler,async(req:UserRequset,res:Response,next:NextFunction)=>{
+    try {
+        if(!req.user)return next(new CustomError('No user found'));
+        const id:string|undefined=req.body.id;
+        if(!id)return next(new CustomError('no id found',400));
+        const database=await MySqlConnection.build();
+        const [row]=await database.connection.query(`select * from class as c where c.id='${id}' and teacher='${req.user.id}';`);
+        res.locals.classId=id;
+        const classes:Array<ClassInterface>=row as Array<ClassInterface>;
+        if(classes.length){
+            await database.connection.query(`delete from class as c where c.id='${id}';`);
+            await database.connection.query(`drop table ${id}_record;`);
+            return res.sendStatus(200);
+        }
+        return res.status(404).json('class not found');
+    } catch (error) {
+        next(error);
+    }
+},classCreatingError)
 
 export default router;
