@@ -1,4 +1,3 @@
-import { Schema, model, connect } from 'mongoose';
 interface User {
     id:string;
     name: string;

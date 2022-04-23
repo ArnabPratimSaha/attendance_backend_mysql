@@ -25,5 +25,4 @@ export class MySqlConnection{
         }
     }
 }
-
 export default MySqlConnection;
