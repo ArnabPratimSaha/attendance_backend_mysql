@@ -35,7 +35,56 @@ router.post('/',userHandler,async(req:UserRequset,res:CustomResponse,next:NextFu
         next(error);
     }
 },classCreatingError)
-
+interface ColumnData{
+    name:string,
+    id:string,
+    roll:string,
+    presentId:string|null
+}
+router.get('/col',async(req:Request,res:Response,next:NextFunction)=>{
+    try {
+        const rid:string|undefined=req.query.rid?.toString();
+        const classsId:string|undefined=req.query.cid?.toString();
+        if(!classsId||!rid)return next(new CustomError('cid or rid missing',400));
+        const database=await MySqlConnection.build();
+        const [c]=await database.connection.query(`select * from class as c where c.id='${classsId}';`);
+        const classses:Array<ClassInterface>=c as  Array<ClassInterface>;
+        if(!classses.length)return next(new CustomError('class not found',404));
+        const [da]=await database.connection.query(`select * from  attendancerecord as ar where ar.id='${rid}';`);
+        const attendance:Array<AttendanceRecord>=da as Array<AttendanceRecord>;
+        if(!attendance.length)return next(new CustomError('attendance id not found',404));
+        const [rw]=await database.connection.query(`select s.name,s.id,s.roll,nw.sid as presentId from (select * from  student as s where s.classId='${classsId}') as s left join 
+        (select * from (select sr.sid from ${classsId}_record as sr where sr.rid='${rid}') as wn) as nw on nw.sid=s.id;`);
+        const data:Array<ColumnData>=rw as Array<ColumnData>;
+        interface StudentIndividualData{
+            id:string,
+            name:string,roll:string,
+            remark:boolean
+        }
+        interface DateAttendance{
+            id:string,
+            date:Date,
+            name:string,
+            students:Array<StudentIndividualData>,
+            teacher:string
+        }
+        const stuData:Array<StudentIndividualData>=data.map(d=>{
+            const da:StudentIndividualData={
+                id:d.id,name:d.name,remark:d.presentId?true:false,
+                roll:d.roll
+            }
+            return da;
+        })
+        const resData:DateAttendance={
+            id:classses[0].id,name:classses[0].name,
+            teacher:classses[0].teacher,students:stuData,
+            date:new Date(attendance[0].timestamp)
+        }
+        return res.status(200).json({...resData})
+    } catch (error) {
+        next(error);
+    }
+})
 router.post('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
     try {
         const time:Date|undefined=req.body.time?new Date(req.body.time):undefined;
@@ -47,7 +96,8 @@ router.post('/col',userHandler,teacherHandler,async(req:teacherRequest,res:Custo
     } catch (error) {
         next(error);
     }
-})
+});
+
 router.patch('/col',userHandler,teacherHandler,async(req:teacherRequest,res:CustomResponse,next:NextFunction)=>{
     try {
         const recordId:string|undefined=req.body.rid;
@@ -95,9 +145,16 @@ interface StudentAttendanceInterface{
     attendanceId:string,
     timestamp:string
 }
+interface studentDataInterface{
+    id:string;
+    classId:string;
+    name: string;
+    roll:string;
+    attendance:Array<boolean>
+}
 router.get('/',async(req:Request,res:Response,next:NextFunction)=>{
     try {
-        const classId:string|undefined=req.query.cid?.toString();
+        const classId:string|undefined=req.query.cid?.toString().trim();
         if(!classId)return next(new CustomError('Class id missing'));
         const database=await MySqlConnection.build();
         const [row]=await database.connection.query(`select * from class as c where c.id='${classId}';`);
@@ -124,7 +181,14 @@ router.get('/',async(req:Request,res:Response,next:NextFunction)=>{
             const sid=studentIdArray.indexOf(sd.studentId);
             studentMatrix[sid][rid]=true;
         })
-        return res.status(200).json({attendanceRecords,students,studentMatrix});
+        const studentDataResponse:Array<studentDataInterface>=students.map((s,i)=>{
+            return {
+                id:s.id,classId:s.classId,
+                name:s.name,roll:s.roll,
+                attendance:studentMatrix[i]
+            }
+        })
+        return res.status(200).json({...classes[0],attendanceRecords,students:studentDataResponse});
     } catch (error) {
         next(error);
     }

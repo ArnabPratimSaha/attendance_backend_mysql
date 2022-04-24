@@ -12,10 +12,10 @@ export class MySqlConnection{
     public static build =async():Promise<MySqlConnection>=> {
         try {
             const connection= await mysql.createConnection({
-                host: 'localhost',
-                user: 'root',
-                password: 'password',
-                database: 'attendenceDatabase',
+                host: process.env.MYSQL_ADDON_HOST,
+                user: process.env.MYSQL_ADDON_USER,
+                password: process.env.MYSQL_ADDON_PASSWORD,
+                database: process.env.MYSQL_ADDON_DB,
                 port: 3306
             });
             const nc=new MySqlConnection(connection);

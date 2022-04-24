@@ -6,6 +6,7 @@ import { CustomError } from '../middleware/errorHandler';
 import { teacherRequest, teacherHandler } from '../middleware/teacherHandler';
 import MySqlConnection from '../database/config';
 import { Student } from '../database/student';
+import { ClassInterface } from '../database/class';
 
 
 const router:Router=express.Router();
@@ -28,16 +29,31 @@ router.post('/',userHandler,teacherHandler,async(req:teacherRequest,res:CustomRe
         next(error);
     }
 })
+interface studentInformation{
+    id:string,
+    timestamp:string,
+    remark:boolean
+}
 router.get('/',async(req:CustomRequest,res:CustomResponse,next:NextFunction)=>{
     try {
         const id:string|undefined=req.query.id?.toString().trim();
         const cid:string|undefined=req.query.cid?.toString().trim();
         if(!id || !cid)return next(new CustomError('cid or id missing',400));
         const database=await MySqlConnection.build();
-        const [row]=await database.connection.query(`select * from student as s where s.id='${id}' and classId='${cid}';`);
-        const students:Array<Student>=row as Array<Student>;
-        if(!students.length)return next(new CustomError('Student not found',404));
-        res.status(200).json({ ...students[0] });
+        const [c]=await database.connection.query(`select * from class as c where c.id='${cid}';`);
+        const classes:Array<ClassInterface>=c as Array<ClassInterface>;
+        if(!classes.length)return next(new CustomError(`class not found`,404));
+        const [s]=await database.connection.query(`select * from student as s where s.id='${id}';`);
+        const students:Array<Student>=s as Array<Student>;
+        if(!students.length)return next(new CustomError('student not found',404));
+        const [row]=await database.connection.query(`
+        select * from  (select ar.id,ar.timestamp,case ifnull(res.id,'0') when '0' then false else true end as remark from  attendancerecord as ar 
+            left join
+        (select sr.id,sr.rid,sr.cid from  ${cid}_record as sr where sr.sid='${id}')as res 
+            on res.rid=ar.id) as rec order by rec.timestamp desc
+        ;`);
+        const studentInfo:Array<studentInformation>=row as Array<studentInformation>;
+        res.status(200).json({teacher:classes[0].teacher,...students[0],attendance:studentInfo});
     } catch (error) {
         next(error);
     }

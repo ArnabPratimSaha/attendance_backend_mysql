@@ -8,10 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.teacherHandler = void 0;
 const errorHandler_1 = require("./errorHandler");
-const class_1 = require("../database/class");
+const config_1 = __importDefault(require("../database/config"));
 const teacherHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -20,13 +23,14 @@ const teacherHandler = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         const classId = (_a = req.headers.classid) === null || _a === void 0 ? void 0 : _a.toString().trim();
         if (!classId)
             return next(new errorHandler_1.CustomError('class id missing', 400));
-        const classData = yield class_1.ClassModel.findOne({ id: classId });
-        if (!classData)
+        const database = yield config_1.default.build();
+        const [row] = yield database.connection.query(`select * from class as c where c.id='${classId}';`);
+        const classes = row;
+        if (!classes.length)
             return next(new errorHandler_1.CustomError('class Not found', 404));
-        const id = req.user.id;
-        if (!classData.teachers.find(c => c === id))
+        if (classes[0].teacher !== req.user.id)
             return next(new errorHandler_1.CustomError('user does not have authorized to access the class', 403));
-        req.classData = classData;
+        req.classData = classes[0];
         return next();
     }
     catch (error) {

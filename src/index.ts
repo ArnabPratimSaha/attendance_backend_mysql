@@ -16,10 +16,11 @@ var corsOptions: cors.CorsOptions = {
 const runBaseQueries=async()=>{
     try {
         const db=await MySqlConnection.build();
-        await db.connection.query(`create table if not exists class( id varchar(255) primary key,name varchar(255) not null,createdAt datetime not null,teacher varchar(255),foreign key (teacher) references user(id)  );`)
         await db.connection.query(`create table if not exists user(id varchar(255) unique not null,name varchar(255) not null,email varchar(255) primary key not null,password varchar(255) not null); `)
+        await db.connection.query(`create table if not exists refreshtoken(uid varchar(255) not null,foreign key (uid) references user(id) on delete cascade,token varchar(255) not null)`)
+        await db.connection.query(`create table if not exists class( id varchar(255) primary key,name varchar(255) not null,createdAt datetime not null,teacher varchar(255),foreign key (teacher) references user(id) on delete cascade );`)
+        await db.connection.query(`create table if not exists student (id varchar(255) primary key,classId varchar(255) not null,foreign key (classId) references class(id) on delete cascade,roll varchar(255) not null, name varchar(255) not null )`)
         await db.connection.query(`create table if not exists attendancerecord(id varchar(255) primary key,classId varchar(255) not null,timestamp datetime not null, foreign key (classId) references class(id) on delete cascade );`)
-        await db.connection.query(`create table if not exists student (id varchar(255) primary key,classId varchar(255) not null,foreign key (classId) references class(id),roll varchar(255) not null, name varchar(255) not null )`)
     } catch (error) {
         throw error;
     }
@@ -28,6 +29,8 @@ console.log('RUNNING BASE QUERIES...');
 runBaseQueries().then(() => {
     console.log('SUCCESSFULLY RUN THE QUERIES.');
 }).catch(err => {
+    console.log(err);
+    
     console.log('COULD NOT RUN THE QUERIES.');
 
 })
