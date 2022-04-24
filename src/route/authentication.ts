@@ -35,7 +35,7 @@ router.post('/signup',async(req:CustomRequest,res:CustomResponse,next:NextFuncti
         const accesstoken = jwt.sign({ id: user.id }, process.env.SECRET,{ expiresIn:  60});//1 min 
         const refreshtoken=jwt.sign({ id: user.id }, process.env.SECRET,{expiresIn:'1y'});
         await database.connection.query(`insert into user(id,name,email,password) values('${user.id}','${user.name}','${user.email}','${user.password}' );`);
-        await database.connection.query(`insert into refreshtoken(user_id,token) values ('${user.id}','${refreshtoken}')`);
+        await database.connection.query(`insert into refreshtoken(uid,token) values ('${user.id}','${refreshtoken}')`);
         return res.status(200).json({accesstoken,refreshtoken,id:user.id,name:user.name,email:user.email});
     } catch (error) {
         return next(error);
@@ -56,7 +56,7 @@ router.post('/login',async(req:CustomRequest,res:CustomResponse,next:NextFunctio
         if(!isSame)return next(new CustomError('Credentials invalid',403));
         const accesstoken = jwt.sign({ id: users[0].id }, process.env.SECRET,{ expiresIn:  60});//1 min 
         const refreshtoken=jwt.sign({ id: users[0].id }, process.env.SECRET,{expiresIn:'1y'});
-        await database.connection.query(`insert into refreshtoken(user_id,token) values ('${users[0].id}','${refreshtoken}')`);
+        await database.connection.query(`insert into refreshtoken(uid,token) values ('${users[0].id}','${refreshtoken}')`);
         return res.status(200).json({ accesstoken, refreshtoken, id: users[0].id,name:users[0].name,email});
     } catch (error) {
         return next(error);

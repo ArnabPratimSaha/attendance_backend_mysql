@@ -44,7 +44,7 @@ const userHandler=async(req:UserRequset,res:CustomResponse,next:NextFunction):Pr
                     const [rows]=await database.connection.query(`select * from user where user.id='${id}';`);
                     const users:Array<User>=rows as Array<User>;
                     if (!users.length) return next(new CustomError('No user found',404));
-                    const [rt]=await database.connection.query(`select * from refreshtoken as rt where rt.user_id='${id}' and rt.token='${refreshtoken}' limit 1;`)
+                    const [rt]=await database.connection.query(`select * from refreshtoken as rt where rt.uid='${id}' and rt.token='${refreshtoken}' limit 1;`)
                     const token:Array<RefreshtokenInterface>=rt as Array<RefreshtokenInterface>;
                     if(!token.length)return next(new CustomError('Security breach',401));
                     req.accesstoken = jwt.sign({ id: users[0].id }, process.env.SECRET, { expiresIn: 60 });//1 min

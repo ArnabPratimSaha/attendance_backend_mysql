@@ -13,19 +13,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const user_1 = require("../database/user");
 const userHandler_1 = require("../middleware/userHandler");
 const errorHandler_1 = require("../middleware/errorHandler");
-const class_1 = require("../database/class");
+const config_1 = __importDefault(require("../database/config"));
 const router = express_1.default.Router();
 router.get('/', userHandler_1.userHandler, (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         if (!req.user)
             return next(new errorHandler_1.CustomError('No User', 404));
-        const user = yield user_1.UserModel.findOne({ id: req.user.id }, '-_id -password -refreshtoken');
-        if (!user)
-            return next(new errorHandler_1.CustomError('No User', 404));
-        return res.status(200).json(Object.assign(Object.assign({}, user.toObject()), { accesstoken: req.accesstoken }));
+        return res.status(200).json({ name: req.user.name, email: req.user.email, id: req.user.id, accesstoken: req.accesstoken });
     }
     catch (error) {
         next(error);
@@ -35,7 +31,16 @@ router.get('/class', userHandler_1.userHandler, (req, res, next) => __awaiter(vo
     try {
         if (!req.user)
             return next(new errorHandler_1.CustomError('No User', 404));
-        const classes = yield class_1.ClassModel.find({ teachers: { $elemMatch: { $eq: req.user.id } } }, '-_id -__v');
+        const database = yield config_1.default.build();
+        const [row] = yield database.connection.query(`
+        select * from (select rec.id,c.name,c.createdAt,c.teacher,rec.studentCount,rec.recordCount from (select srec.id,srec.studentCount,rrec.recordCount from (select ifnull(srec.studentCount,0) as studentCount,srec.id from  (select * from class as c left join (select count(*) as studentCount,classId from student as s group by s.classId) as ns on c.id=ns.classId) as srec)
+            as srec 
+        inner join
+        (select ifnull(rrec.recordCount,0) as recordCount,rrec.id from (select * from  class as c left join (select count(*) as recordCount,classId from  attendancerecord as ar group by ar.classId) as nr on c.id=nr.classId) as rrec) as rrec
+        on srec.id=rrec.id) as rec
+        inner join class as c where c.id=rec.id) as classinfo where classinfo.teacher='${req.user.id}';
+        `);
+        let classes = row;
         return res.status(200).json({ classes, accesstoken: req.accesstoken });
     }
     catch (error) {
